@@ -1,0 +1,31 @@
+[llm]
+default_provider = "openai"
+
+[llm.providers.openai]
+api_key = "your-openai-api-key-here"
+model = "gpt-3.5-turbo"
+max_tokens = 2000
+temperature = 0.7
+
+[database]
+database_type = "SQLite"
+connection_string = "sqlite:data/ai_manager.db"
+max_connections = 10
+enable_logging = false
+
+[external_services.notifications]
+enable_desktop = true
+enable_sound = true
+
+[ui]
+theme = "dark"
+enable_system_tray = true
+
+[ui.window_size]
+width = 1200
+height = 800
+
+[logging]
+level = "info"
+file_logging = true
+log_file_path = "logs/ai_manager.log"
