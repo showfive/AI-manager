@@ -1,0 +1,33 @@
+# Markdown linting configuration for AI Manager
+# More lenient settings for technical documentation
+
+# Line length - increased from default 80 to 120 characters
+MD013:
+  line_length: 120
+  heading_line_length: 120
+  code_block_line_length: 120
+  tables: false
+
+# Allow duplicate headings in different sections
+MD024:
+  siblings_only: true
+
+# Allow inline HTML for better formatting
+MD033: false
+
+# Allow bare URLs
+MD034: false
+
+# Allow emphasis used instead of a heading
+MD036: false
+
+# Allow fenced code blocks without language
+MD040: false
+
+# Allow emphasis used for headers
+MD003:
+  style: "atx"
+
+# Allow trailing punctuation in headings
+MD026:
+  punctuation: ".,;:!?"

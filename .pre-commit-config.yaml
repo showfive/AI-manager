@@ -63,7 +63,7 @@ repos:
     rev: v0.37.0
     hooks:
       - id: markdownlint
-        args: ['--fix']
+        args: ['--fix', '--config', '.markdownlint.yaml']
         exclude: 'CHANGELOG.md'
 
 # Configuration for specific hooks
