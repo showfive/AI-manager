@@ -15,7 +15,7 @@ pub enum ServiceMessage {
         message_type: ResponseType,
         timestamp: DateTime<Utc>,
     },
-    
+
     // Core ↔ LLM communication
     LLMRequest {
         prompt: String,
@@ -28,7 +28,7 @@ pub enum ServiceMessage {
         usage: TokenUsage,
         request_id: Uuid,
     },
-    
+
     // Core ↔ External service communication
     CalendarSync {
         action: CalendarAction,
@@ -36,7 +36,7 @@ pub enum ServiceMessage {
     EmailProcess {
         emails: Vec<EmailData>,
     },
-    
+
     // Core ↔ Data service communication
     StoreConversation {
         user_id: String,
@@ -48,7 +48,7 @@ pub enum ServiceMessage {
     UserProfileResponse {
         profile: Option<UserProfile>,
     },
-    
+
     // System management
     ServiceHealthCheck {
         service_id: String,

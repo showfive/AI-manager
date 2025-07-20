@@ -15,9 +15,9 @@ export RUST_LOG=${RUST_LOG:-"warn"}
 run_tests() {
     local test_type="$1"
     local test_args="$2"
-    
+
     echo "📋 Running $test_type tests..."
-    
+
     if cargo test $test_args; then
         echo "✅ $test_type tests passed"
     else

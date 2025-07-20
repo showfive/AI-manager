@@ -1,6 +1,6 @@
-use ai_manager_shared::{ServiceHealth, SystemError, Result};
-use std::time::{Duration, Instant};
+use ai_manager_shared::{Result, ServiceHealth};
 use serde::{Deserialize, Serialize};
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthReport {
@@ -70,18 +70,18 @@ impl HealthChecker {
             last_error: None,
         }
     }
-    
+
     /// Perform a health check
     pub async fn check_health(&mut self, service_id: &str) -> Result<HealthReport> {
         let now = Instant::now();
         self.last_check = Some(now);
-        
+
         // Get system metrics
         let metrics = self.collect_metrics().await?;
-        
+
         // Determine overall health status
         let status = self.determine_health_status(&metrics);
-        
+
         Ok(HealthReport {
             service_id: service_id.to_string(),
             status,
@@ -90,23 +90,23 @@ impl HealthChecker {
             metrics,
         })
     }
-    
+
     /// Record an error
     pub fn record_error(&mut self, error: &str) {
         self.error_count += 1;
         self.last_error = Some(error.to_string());
     }
-    
+
     /// Get uptime duration
     pub fn uptime(&self) -> Duration {
         Instant::now().duration_since(self.start_time)
     }
-    
+
     /// Collect system metrics
     async fn collect_metrics(&self) -> Result<HealthMetrics> {
         // In a real implementation, we would collect actual system metrics
         // For now, we'll return mock data
-        
+
         Ok(HealthMetrics {
             memory_usage_mb: self.get_memory_usage(),
             cpu_usage_percent: self.get_cpu_usage(),
@@ -115,46 +115,46 @@ impl HealthChecker {
             last_error: self.last_error.clone(),
         })
     }
-    
+
     /// Determine health status based on metrics
     fn determine_health_status(&self, metrics: &HealthMetrics) -> ServiceHealth {
         // High error rate
         if metrics.error_count > 10 {
             return ServiceHealth::Unhealthy {
-                error: format!("High error count: {}", metrics.error_count)
+                error: format!("High error count: {}", metrics.error_count),
             };
         }
-        
+
         // High memory usage
         if metrics.memory_usage_mb > 500.0 {
             return ServiceHealth::Degraded {
-                reason: format!("High memory usage: {:.1} MB", metrics.memory_usage_mb)
+                reason: format!("High memory usage: {:.1} MB", metrics.memory_usage_mb),
             };
         }
-        
+
         // High CPU usage
         if metrics.cpu_usage_percent > 80.0 {
             return ServiceHealth::Degraded {
-                reason: format!("High CPU usage: {:.1}%", metrics.cpu_usage_percent)
+                reason: format!("High CPU usage: {:.1}%", metrics.cpu_usage_percent),
             };
         }
-        
+
         // Large message queue
         if metrics.message_queue_length > 100 {
             return ServiceHealth::Degraded {
-                reason: format!("Large message queue: {}", metrics.message_queue_length)
+                reason: format!("Large message queue: {}", metrics.message_queue_length),
             };
         }
-        
+
         ServiceHealth::Healthy
     }
-    
+
     /// Get current memory usage (mock implementation)
     fn get_memory_usage(&self) -> f64 {
         // In a real implementation, this would use system APIs
         50.0 // Mock 50MB usage
     }
-    
+
     /// Get current CPU usage (mock implementation)
     fn get_cpu_usage(&self) -> f64 {
         // In a real implementation, this would use system APIs
@@ -171,28 +171,32 @@ impl Default for HealthChecker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_health_check() {
         let mut checker = HealthChecker::new();
+
+        // Add a small delay to ensure uptime > 0
+        tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+
         let report = checker.check_health("test-service").await.unwrap();
-        
+
         assert_eq!(report.service_id, "test-service");
         assert!(matches!(report.status, ServiceHealth::Healthy));
         assert!(report.uptime.as_millis() > 0);
     }
-    
+
     #[tokio::test]
     async fn test_error_recording() {
         let mut checker = HealthChecker::new();
-        
+
         // Record some errors
         for i in 0..15 {
             checker.record_error(&format!("Test error {}", i));
         }
-        
+
         let report = checker.check_health("test-service").await.unwrap();
-        
+
         // Should be unhealthy due to high error count
         assert!(matches!(report.status, ServiceHealth::Unhealthy { .. }));
         assert_eq!(report.metrics.error_count, 15);

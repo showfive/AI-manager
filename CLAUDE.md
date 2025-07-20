@@ -1,14 +1,20 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
 ## Project Overview
 
-AI Manager is a background resident application that leverages advanced LLM reasoning capabilities to assist with schedule management, administrative tasks, and automation of simple repetitive operations. The project adopts a microarchitecture approach to completely separate LLM, database, the main system, and external services for improved maintainability.
+AI Manager is a background resident application that leverages advanced LLM
+reasoning capabilities to assist with schedule management, administrative tasks,
+and automation of simple repetitive operations. The project adopts a
+microarchitecture approach to completely separate LLM, database, the main
+system, and external services for improved maintainability.
 
 ## Development Commands
 
 ### Setup
+
 ```bash
 # Initial project setup (recommended first step)
 ./scripts/setup.sh
@@ -18,6 +24,7 @@ AI Manager is a background resident application that leverages advanced LLM reas
 ```
 
 ### Build & Test
+
 ```bash
 # Comprehensive testing suite
 ./scripts/test.sh
@@ -36,6 +43,7 @@ cargo build --workspace --release
 ```
 
 ### Development
+
 ```bash
 # Run core service directly
 cargo run -p ai-manager-core
@@ -55,9 +63,32 @@ cargo fmt --all
 cargo clippy --workspace --all-targets
 ```
 
+### CI/CD & Quality Assurance
+
+```bash
+# Run local CI simulation (all checks)
+./scripts/ci-local.sh
+
+# Pre-commit hooks setup
+pre-commit install
+pre-commit run --all-files
+
+# Docker build and test
+docker build -t ai-manager .
+
+# Security audit
+cargo install cargo-audit
+cargo audit
+
+# Dependency analysis
+cargo install cargo-machete
+cargo machete
+```
+
 ## Project Status
 
 ### ✅ **Phase 1 - COMPLETED**
+
 - ✅ **Cargo Workspace Setup** - Complete microservice architecture
 - ✅ **Event Bus System** - tokio::mpsc based message routing with broadcasting
 - ✅ **Core Service** - Service orchestration with health monitoring and auto-restart
@@ -65,13 +96,17 @@ cargo clippy --workspace --all-targets
 - ✅ **Shared Types** - Comprehensive message types and error handling
 - ✅ **Development Tooling** - Production-ready scripts for setup, dev, test, build
 - ✅ **Configuration System** - TOML-based config with environment variable overrides
+- ✅ **CI/CD Pipeline** - GitHub Actions with comprehensive testing and releases
+- ✅ **Quality Assurance** - Pre-commit hooks, security scanning, Docker support
 
 ### 🔄 **Phase 2 - Ready to Implement**
+
 - 🔄 **Data Service** - Complete database abstraction with SQLite/PostgreSQL support
 - 🔄 **External Services** - Google Calendar and Email processing integration
 - 🔄 **UI Foundation** - Tauri + React chat interface
 
 ### 📋 **Phase 3 - Future**
+
 - 📋 **Voice Interface** - Speech recognition and synthesis
 - 📋 **PC Automation** - Advanced automation capabilities
 
@@ -87,7 +122,7 @@ cargo clippy --workspace --all-targets
 
 ## Project Structure
 
-```
+```text
 ai-manager/
 ├── Cargo.toml              # Workspace configuration
 ├── CLAUDE.md               # This file - development guidance
@@ -131,6 +166,7 @@ ai-manager/
 ## Key Technologies & Implementation Details
 
 ### Core Infrastructure
+
 - **Event Bus**: tokio::mpsc channels with message routing and broadcasting
 - **Service Management**: Health monitoring, auto-restart, graceful shutdown
 - **Configuration**: TOML files with environment variable overrides
@@ -138,12 +174,14 @@ ai-manager/
 - **Logging**: Structured logging with configurable levels
 
 ### LLM Integration
+
 - **Provider Abstraction**: Pluggable LLM providers (OpenAI, Claude implemented)
 - **Prompt Management**: Template system with variable substitution
 - **Usage Tracking**: Token usage monitoring and cost estimation
 - **Error Recovery**: Retry logic and circuit breaker patterns
 
 ### Database Abstraction
+
 - **Multi-Database Support**: SQLite (default), PostgreSQL, External DB
 - **Connection Management**: Connection pooling and health checks
 - **Migration System**: Database schema versioning
@@ -152,12 +190,14 @@ ai-manager/
 ## Development Notes
 
 ### Working with Services
+
 - All services communicate via async message passing (tokio::mpsc)
 - Each service is independently testable and deployable
 - Services register with the event bus for message routing
 - Health monitoring ensures service availability
 
 ### Message Patterns
+
 ```rust
 // User input flows: UI → Core → LLM → Core → UI
 ServiceMessage::UserInput { content, timestamp, user_id }
@@ -172,12 +212,14 @@ ServiceMessage::ShutdownService { service_id }
 ```
 
 ### Configuration Management
+
 - Default configuration in `config/default.toml`
 - User overrides in `config/user.toml`
 - Environment variables with `AI_MANAGER_` prefix
 - Validation on startup with helpful error messages
 
 ### Testing Strategy
+
 - Unit tests for individual components
 - Integration tests for service communication
 - Health check verification
@@ -211,13 +253,17 @@ ServiceMessage::ShutdownService { service_id }
 4. **Building**: Use `./scripts/build.sh` for production builds
 
 ### Code Quality Standards
+
 - All services must compile without warnings
 - Tests must pass before committing
 - Follow Rust idioms and best practices
 - Maintain comprehensive error handling
 - Document public APIs
+- Pre-commit hooks must pass (formatting, linting, security)
+- CI/CD pipeline verification required for all changes
 
 ### When Adding New Services
+
 1. Create new crate in `crates/` directory
 2. Add to workspace in root `Cargo.toml`
 3. Implement message handling patterns
@@ -228,6 +274,7 @@ ServiceMessage::ShutdownService { service_id }
 ## Current Implementation Status
 
 ### Completed & Production Ready ✅
+
 - **Workspace Architecture**: Complete separation of concerns
 - **Event Bus System**: Full message routing with broadcasting
 - **Core Service**: Service orchestration and management
@@ -235,18 +282,27 @@ ServiceMessage::ShutdownService { service_id }
 - **Shared Infrastructure**: Types, errors, constants
 - **Development Tooling**: Complete automation scripts
 - **Documentation**: Comprehensive design documents
+- **CI/CD Infrastructure**: GitHub Actions, pre-commit hooks, Docker support
+- **Quality Assurance**: Automated testing, security scanning, code formatting
 
 ### Ready for Implementation 🔄
+
 - **Data Service**: Database layer (structure exists, needs completion)
 - **External Services**: Calendar and email integration
 - **UI Layer**: Tauri + React interface
 
 ### Key Achievements
+
 - ✅ **Zero-downtime service management** with health monitoring
 - ✅ **Multi-LLM provider support** with cost tracking
 - ✅ **Production-ready build system** with distribution packaging
 - ✅ **Comprehensive testing framework** with multiple test types
 - ✅ **Database abstraction ready** for multiple backends
 - ✅ **Event-driven architecture** with proper service isolation
+- ✅ **Enterprise-grade CI/CD** with automated quality checks
+- ✅ **Docker containerization** with multi-stage builds
+- ✅ **Security-first development** with secret detection and audit tools
 
-The codebase is now ready for Phase 2 development with a solid, scalable foundation that follows all architectural requirements from the design documents.
+The codebase is now ready for Phase 2 development with a solid, scalable
+foundation that follows all architectural requirements from the design
+documents.

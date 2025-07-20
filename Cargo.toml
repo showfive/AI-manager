@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "crates/core",
-    "crates/llm-service", 
+    "crates/llm-service",
     "crates/data-service",
     "crates/external-service",
     "crates/shared",

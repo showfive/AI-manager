@@ -38,7 +38,7 @@ if [ ! -f "config/default.toml" ]; then
 default_provider = "openai"
 
 [llm.providers.openai]
-api_key = "your-openai-api-key-here"
+api_key = "your-openai-api-key-here"  # pragma: allowlist secret
 model = "gpt-3.5-turbo"
 max_tokens = 2000
 temperature = 0.7

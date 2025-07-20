@@ -1,4 +1,4 @@
-use ai_manager_shared::{TokenUsage, Result, SystemError};
+use ai_manager_shared::{Result, SystemError, TokenUsage};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -7,13 +7,13 @@ use std::collections::HashMap;
 pub trait LLMProvider: Send + Sync {
     /// Send a request to the LLM provider
     async fn send_request(&self, request: LLMRequest) -> Result<LLMResponse>;
-    
+
     /// Get usage statistics
     async fn get_usage(&self) -> TokenUsage;
-    
+
     /// Get provider name
     fn provider_name(&self) -> &str;
-    
+
     /// Check if provider is available
     async fn health_check(&self) -> Result<()>;
 }
@@ -58,70 +58,75 @@ impl LLMService {
             default_provider: "openai".to_string(),
         }
     }
-    
+
     /// Add a provider to the service
     pub fn add_provider(&mut self, name: String, provider: Box<dyn LLMProvider>) {
         self.providers.insert(name, provider);
     }
-    
+
     /// Set the default provider
     pub fn set_default_provider(&mut self, name: String) -> Result<()> {
         if self.providers.contains_key(&name) {
             self.default_provider = name;
             Ok(())
         } else {
-            Err(SystemError::Configuration(
-                format!("Provider '{}' not found", name)
-            ))
+            Err(SystemError::Configuration(format!(
+                "Provider '{}' not found",
+                name
+            )))
         }
     }
-    
+
     /// Send request using default provider
     pub async fn send_request(&self, request: LLMRequest) -> Result<LLMResponse> {
-        self.send_request_with_provider(request, &self.default_provider).await
+        self.send_request_with_provider(request, &self.default_provider)
+            .await
     }
-    
+
     /// Send request using specific provider
-    pub async fn send_request_with_provider(&self, request: LLMRequest, provider_name: &str) -> Result<LLMResponse> {
-        let provider = self.providers.get(provider_name)
-            .ok_or_else(|| SystemError::Configuration(
-                format!("Provider '{}' not found", provider_name)
-            ))?;
-        
+    pub async fn send_request_with_provider(
+        &self,
+        request: LLMRequest,
+        provider_name: &str,
+    ) -> Result<LLMResponse> {
+        let provider = self.providers.get(provider_name).ok_or_else(|| {
+            SystemError::Configuration(format!("Provider '{}' not found", provider_name))
+        })?;
+
         provider.send_request(request).await
     }
-    
+
     /// Get available providers
     pub fn get_providers(&self) -> Vec<String> {
         self.providers.keys().cloned().collect()
     }
-    
+
     /// Get default provider name
     pub fn get_default_provider(&self) -> &str {
         &self.default_provider
     }
-    
+
     /// Check health of all providers
     pub async fn health_check_all(&self) -> HashMap<String, Result<()>> {
         let mut results = HashMap::new();
-        
+
         for (name, provider) in &self.providers {
             let result = provider.health_check().await;
             results.insert(name.clone(), result);
         }
-        
+
         results
     }
-    
+
     /// Get usage statistics for all providers
     pub async fn get_usage_all(&self) -> HashMap<String, TokenUsage> {
         let mut usage = HashMap::new();
-        
+
         for (name, provider) in &self.providers {
             let provider_usage = provider.get_usage().await;
             usage.insert(name.clone(), provider_usage);
         }
-        
+
         usage
     }
 }
@@ -135,11 +140,11 @@ impl Default for LLMService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     struct MockProvider {
         name: String,
     }
-    
+
     #[async_trait]
     impl LLMProvider for MockProvider {
         async fn send_request(&self, request: LLMRequest) -> Result<LLMResponse> {
@@ -155,7 +160,7 @@ mod tests {
                 provider: self.name.clone(),
             })
         }
-        
+
         async fn get_usage(&self) -> TokenUsage {
             TokenUsage {
                 prompt_tokens: 100,
@@ -163,27 +168,27 @@ mod tests {
                 total_tokens: 150,
             }
         }
-        
+
         fn provider_name(&self) -> &str {
             &self.name
         }
-        
+
         async fn health_check(&self) -> Result<()> {
             Ok(())
         }
     }
-    
+
     #[tokio::test]
     async fn test_llm_service() {
         let mut service = LLMService::new();
-        
+
         // Add mock provider
         let mock_provider = MockProvider {
             name: "mock".to_string(),
         };
         service.add_provider("mock".to_string(), Box::new(mock_provider));
         service.set_default_provider("mock".to_string()).unwrap();
-        
+
         // Test request
         let request = LLMRequest {
             prompt: "Hello".to_string(),
@@ -194,7 +199,7 @@ mod tests {
             stop_sequences: None,
             stream: false,
         };
-        
+
         let response = service.send_request(request).await.unwrap();
         assert!(response.content.contains("Hello"));
         assert_eq!(response.provider, "mock");

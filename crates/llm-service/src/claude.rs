@@ -1,5 +1,5 @@
-use crate::provider::{LLMProvider, LLMRequest, LLMResponse, FinishReason};
-use ai_manager_shared::{TokenUsage, Result, SystemError};
+use crate::provider::{FinishReason, LLMProvider, LLMRequest, LLMResponse};
+use ai_manager_shared::{Result, SystemError, TokenUsage};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ impl ClaudeProvider {
             .timeout(Duration::from_secs(ai_manager_shared::LLM_REQUEST_TIMEOUT))
             .build()
             .expect("Failed to create HTTP client");
-        
+
         Self {
             client,
             api_key,
@@ -42,7 +42,7 @@ impl ClaudeProvider {
             },
         }
     }
-    
+
     pub fn with_config(
         api_key: String,
         base_url: Option<String>,
@@ -51,7 +51,7 @@ impl ClaudeProvider {
         temperature: Option<f32>,
     ) -> Self {
         let mut provider = Self::new(api_key);
-        
+
         if let Some(url) = base_url {
             provider.base_url = url;
         }
@@ -64,13 +64,13 @@ impl ClaudeProvider {
         if let Some(temp) = temperature {
             provider.temperature = temp;
         }
-        
+
         provider
     }
-    
+
     fn build_messages(&self, request: &LLMRequest) -> Vec<ClaudeMessage> {
         let mut messages = Vec::new();
-        
+
         // Add context messages if any
         for context in &request.context {
             messages.push(ClaudeMessage {
@@ -78,13 +78,13 @@ impl ClaudeProvider {
                 content: context.clone(),
             });
         }
-        
+
         // Add current prompt
         messages.push(ClaudeMessage {
             role: "user".to_string(),
             content: request.prompt.clone(),
         });
-        
+
         messages
     }
 }
@@ -93,20 +93,25 @@ impl ClaudeProvider {
 impl LLMProvider for ClaudeProvider {
     async fn send_request(&self, request: LLMRequest) -> Result<LLMResponse> {
         debug!("Sending Claude request: {}", request.prompt);
-        
+
         let messages = self.build_messages(&request);
-        
+
         let claude_request = ClaudeRequest {
-            model: if request.model.is_empty() { self.default_model.clone() } else { request.model.clone() },
+            model: if request.model.is_empty() {
+                self.default_model.clone()
+            } else {
+                request.model.clone()
+            },
             max_tokens: request.max_tokens.unwrap_or(self.max_tokens),
             messages,
             temperature: request.temperature.or(Some(self.temperature)),
             stop_sequences: request.stop_sequences.clone(),
             stream: Some(request.stream),
         };
-        
-        let response = self.client
-            .post(&format!("{}/messages", self.base_url))
+
+        let response = self
+            .client
+            .post(format!("{}/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("Content-Type", "application/json")
             .header("anthropic-version", "2023-06-01")
@@ -114,32 +119,38 @@ impl LLMProvider for ClaudeProvider {
             .send()
             .await
             .map_err(|e| SystemError::Network(format!("Claude request failed: {}", e)))?;
-        
+
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             error!("Claude API error {}: {}", status, error_text);
-            
+
             return Err(SystemError::LLMApi {
                 provider: "claude".to_string(),
                 message: format!("HTTP {}: {}", status, error_text),
             });
         }
-        
-        let claude_response: ClaudeResponse = response.json().await
-            .map_err(|e| SystemError::Serialization(format!("Failed to parse Claude response: {}", e)))?;
-        
+
+        let claude_response: ClaudeResponse = response.json().await.map_err(|e| {
+            SystemError::Serialization(format!("Failed to parse Claude response: {}", e))
+        })?;
+
         // Extract the response content
-        let content_block = claude_response.content.first()
+        let content_block = claude_response
+            .content
+            .first()
             .ok_or_else(|| SystemError::LLMApi {
                 provider: "claude".to_string(),
                 message: "No content in Claude response".to_string(),
             })?;
-        
+
         let content = match content_block {
             ClaudeContent::Text { text } => text.clone(),
         };
-        
+
         let finish_reason = match claude_response.stop_reason.as_str() {
             "end_turn" => FinishReason::Stop,
             "max_tokens" => FinishReason::Length,
@@ -149,16 +160,19 @@ impl LLMProvider for ClaudeProvider {
                 FinishReason::Stop
             }
         };
-        
+
         // Build usage statistics
         let usage = TokenUsage {
             prompt_tokens: claude_response.usage.input_tokens,
             completion_tokens: claude_response.usage.output_tokens,
             total_tokens: claude_response.usage.input_tokens + claude_response.usage.output_tokens,
         };
-        
-        debug!("Claude request completed. Tokens used: {}", usage.total_tokens);
-        
+
+        debug!(
+            "Claude request completed. Tokens used: {}",
+            usage.total_tokens
+        );
+
         Ok(LLMResponse {
             content,
             model: claude_response.model,
@@ -167,18 +181,18 @@ impl LLMProvider for ClaudeProvider {
             provider: "claude".to_string(),
         })
     }
-    
+
     async fn get_usage(&self) -> TokenUsage {
         self.total_usage.clone()
     }
-    
+
     fn provider_name(&self) -> &str {
         "claude"
     }
-    
+
     async fn health_check(&self) -> Result<()> {
         debug!("Performing Claude health check");
-        
+
         // Claude doesn't have a simple health check endpoint, so we'll do a minimal request
         let test_request = ClaudeRequest {
             model: self.default_model.clone(),
@@ -191,9 +205,10 @@ impl LLMProvider for ClaudeProvider {
             stop_sequences: None,
             stream: Some(false),
         };
-        
-        let response = self.client
-            .post(&format!("{}/messages", self.base_url))
+
+        let response = self
+            .client
+            .post(format!("{}/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("Content-Type", "application/json")
             .header("anthropic-version", "2023-06-01")
@@ -201,7 +216,7 @@ impl LLMProvider for ClaudeProvider {
             .send()
             .await
             .map_err(|e| SystemError::Network(format!("Claude health check failed: {}", e)))?;
-        
+
         if response.status().is_success() {
             debug!("Claude health check passed");
             Ok(())
@@ -236,6 +251,7 @@ struct ClaudeMessage {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct ClaudeResponse {
     id: String,
     #[serde(rename = "type")]
@@ -264,16 +280,16 @@ struct ClaudeUsage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     // Note: These tests require a valid Claude API key to run
     // They are disabled by default to avoid unnecessary API calls
-    
+
     #[tokio::test]
     #[ignore]
     async fn test_claude_provider() {
         let api_key = std::env::var("CLAUDE_API_KEY").expect("CLAUDE_API_KEY not set");
         let provider = ClaudeProvider::new(api_key);
-        
+
         let request = LLMRequest {
             prompt: "Hello, how are you?".to_string(),
             context: vec![],
@@ -283,18 +299,18 @@ mod tests {
             stop_sequences: None,
             stream: false,
         };
-        
+
         let response = provider.send_request(request).await.unwrap();
         assert!(!response.content.is_empty());
         assert_eq!(response.provider, "claude");
     }
-    
+
     #[tokio::test]
     #[ignore]
     async fn test_claude_health_check() {
         let api_key = std::env::var("CLAUDE_API_KEY").expect("CLAUDE_API_KEY not set");
         let provider = ClaudeProvider::new(api_key);
-        
+
         let result = provider.health_check().await;
         assert!(result.is_ok());
     }

@@ -84,7 +84,7 @@ Edit `config/default.toml` to configure:
 
 Set these environment variables to override configuration:
 - `OPENAI_API_KEY` - OpenAI API key
-- `CLAUDE_API_KEY` - Claude API key  
+- `CLAUDE_API_KEY` - Claude API key
 - `DATABASE_URL` - Database connection string
 - `RUST_LOG` - Logging level
 
@@ -92,7 +92,7 @@ Set these environment variables to override configuration:
 
 ```bash
 # Set your API key
-export OPENAI_API_KEY="your-key-here"
+export OPENAI_API_KEY="your-key-here"  # pragma: allowlist secret
 
 # Run the application
 ./bin/ai-manager-core
@@ -121,7 +121,7 @@ echo "🎉 Production build complete!"
 echo ""
 echo "📦 Distribution ready in ./dist/"
 echo "🚀 To deploy:"
-echo "  1. Copy the ./dist/ directory to your production server"  
+echo "  1. Copy the ./dist/ directory to your production server"
 echo "  2. Configure config/default.toml with your settings"
 echo "  3. Run ./bin/ai-manager-core"
 echo ""

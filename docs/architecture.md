@@ -5,7 +5,8 @@
 ### 1.1 マイクロサービス構成
 
 #### ASCII図
-```
+
+```text
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   UI Service    │    │  Core Service   │    │  LLM Service    │
 │   (Tauri+React) │◄──►│   (Rust/tokio)  │◄──►│   (Rust/reqwest)│
@@ -19,6 +20,7 @@
 ```
 
 #### Mermaid図
+
 ```mermaid
 graph TB
     subgraph "AI Manager Architecture"
@@ -59,6 +61,7 @@ graph TB
 ```
 
 ### 1.2 設計原則
+
 - **完全分離**: 各サービスは独立して動作可能
 - **非同期処理**: tokioベースの完全非同期実装
 - **イベント駆動**: メッセージパッシングによる疎結合
@@ -67,6 +70,7 @@ graph TB
 ## 2. サービス間通信設計
 
 ### 2.1 メッセージ定義
+
 ```rust
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ServiceMessage {
@@ -110,6 +114,7 @@ pub enum ServiceMessage {
 ```
 
 ### 2.2 イベントバスアーキテクチャ
+
 ```rust
 pub struct EventBus {
     // サービス間の双方向通信チャネル
@@ -141,7 +146,9 @@ impl EventBus {
 ## 3. サービス詳細設計
 
 ### 3.1 Core Service
+
 **責務**: システム全体の調整とビジネスロジック
+
 ```rust
 pub struct CoreService {
     event_bus: Arc<EventBus>,
@@ -158,7 +165,9 @@ impl CoreService {
 ```
 
 ### 3.2 LLM Service
+
 **責務**: 各種LLMサービスとの通信
+
 ```rust
 pub trait LLMProvider {
     async fn send_request(&self, prompt: String) -> Result<String>;
@@ -172,7 +181,9 @@ pub struct LLMService {
 ```
 
 ### 3.3 Data Service
+
 **責務**: データの永続化と管理（データベース抽象化）
+
 ```rust
 pub trait DatabaseConnection {
     async fn execute(&self, query: &str) -> Result<()>;
@@ -197,7 +208,9 @@ pub struct Conversation {
 ```
 
 ### 3.4 External Service
+
 **責務**: 外部サービスとの連携
+
 ```rust
 pub struct ExternalService {
     calendar: GoogleCalendarClient,
@@ -215,6 +228,7 @@ impl ExternalService {
 ## 4. サービス独立性の保証
 
 ### 4.1 サービストレイト
+
 ```rust
 pub trait Service {
     async fn start(&mut self, rx: mpsc::Receiver<ServiceMessage>) -> Result<()>;
@@ -225,6 +239,7 @@ pub trait Service {
 ```
 
 ### 4.2 サービス管理
+
 ```rust
 pub struct ServiceManager {
     services: HashMap<ServiceId, JoinHandle<()>>,
@@ -242,6 +257,7 @@ impl ServiceManager {
 ## 5. エラーハンドリング・フォルトトレラント
 
 ### 5.1 エラー処理戦略
+
 ```rust
 #[derive(thiserror::Error, Debug)]
 pub enum SystemError {
@@ -260,6 +276,7 @@ pub enum SystemError {
 ```
 
 ### 5.2 復旧機能
+
 - **自動再起動**: サービス障害時の自動復旧
 - **サーキットブレーカー**: 外部サービス障害時の保護
 - **グレースフルシャットダウン**: 安全な終了処理
@@ -268,11 +285,13 @@ pub enum SystemError {
 ## 6. パフォーマンス最適化
 
 ### 6.1 非同期処理最適化
+
 - **タスクプール**: 効率的なタスク管理
 - **バックプレッシャー**: メモリ使用量制御
 - **ストリーミング**: 大量データの効率的処理
 
 ### 6.2 リソース管理
+
 - **接続プール**: データベース・HTTP接続の再利用
 - **メモリ効率**: ゼロコピー・所有権移譲の活用
 - **CPU効率**: 適切な並行度制御
@@ -280,11 +299,13 @@ pub enum SystemError {
 ## 7. セキュリティ設計
 
 ### 7.1 データ保護
+
 - **暗号化**: 機密データの暗号化保存
 - **認証情報管理**: OAuth2トークンの安全な管理
 - **ログ保護**: 機密情報のログ出力防止
 
 ### 7.2 通信セキュリティ
+
 - **TLS通信**: 外部API通信の暗号化
 - **API認証**: 適切な認証ヘッダー管理
 - **レート制限**: API使用量の制御

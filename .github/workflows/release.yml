@@ -1,0 +1,236 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get version
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        release_name: AI Manager ${{ steps.get_version.outputs.version }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Changes in ${{ steps.get_version.outputs.version }}
+
+          ### New Features
+          - [List new features here]
+
+          ### Bug Fixes
+          - [List bug fixes here]
+
+          ### Breaking Changes
+          - [List breaking changes here]
+
+          ### Installation
+
+          Download the appropriate binary for your platform from the assets below.
+
+          ### Docker
+
+          ```bash
+          docker pull ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.version }}
+          ```
+
+  build-and-upload:
+    name: Build and Upload
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: ai-manager-core
+            asset_name: ai-manager-linux-x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            binary_name: ai-manager-core
+            asset_name: ai-manager-linux-musl-x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: ai-manager-core.exe
+            asset_name: ai-manager-windows-x86_64.exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary_name: ai-manager-core
+            asset_name: ai-manager-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: ai-manager-core
+            asset_name: ai-manager-macos-aarch64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-${{ matrix.target }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install musl tools (Linux musl only)
+      if: matrix.target == 'x86_64-unknown-linux-musl'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y musl-tools
+
+    - name: Build release binary
+      run: |
+        cargo build --release --target ${{ matrix.target }} -p ai-manager-core
+
+    - name: Strip binary (Unix only)
+      if: runner.os != 'Windows'
+      run: |
+        if command -v strip >/dev/null 2>&1; then
+          strip target/${{ matrix.target }}/release/${{ matrix.binary_name }}
+        fi
+
+    - name: Create archive
+      run: |
+        mkdir -p release
+        cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} release/
+        cp README.md release/
+        cp -r config release/ || echo "No config directory found"
+
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          7z a ${{ matrix.asset_name }}.zip release/*
+        else
+          tar czf ${{ matrix.asset_name }}.tar.gz -C release .
+        fi
+
+    - name: Upload Release Asset (tar.gz)
+      if: runner.os != 'Windows'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ${{ matrix.asset_name }}.tar.gz
+        asset_name: ${{ matrix.asset_name }}.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload Release Asset (zip)
+      if: runner.os == 'Windows'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ${{ matrix.asset_name }}.zip
+        asset_name: ${{ matrix.asset_name }}.zip
+        asset_content_type: application/zip
+
+  docker-build:
+    name: Build and Push Docker Image
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=tag
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  update-documentation:
+    name: Update Documentation
+    needs: [create-release, build-and-upload]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update CHANGELOG
+      run: |
+        VERSION=${{ needs.create-release.outputs.version }}
+        DATE=$(date +%Y-%m-%d)
+
+        # Create or update CHANGELOG.md
+        if [ ! -f CHANGELOG.md ]; then
+          echo "# Changelog" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+        fi
+
+        # Add new version entry
+        sed -i "2i\\## [$VERSION] - $DATE\\n\\n### Added\\n- [List additions here]\\n\\n### Changed\\n- [List changes here]\\n\\n### Fixed\\n- [List fixes here]\\n\\n" CHANGELOG.md
+
+    - name: Commit changelog updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add CHANGELOG.md
+        git diff --staged --quiet || git commit -m "Update CHANGELOG for ${{ needs.create-release.outputs.version }}"
+        git push

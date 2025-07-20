@@ -2,7 +2,7 @@
 
 ## 1. 全体構造
 
-```
+```text
 ai-manager/
 ├── Cargo.toml              # Workspace設定
 ├── README.md               # プロジェクト概要
@@ -52,6 +52,7 @@ ai-manager/
 ## 2. ルートレベル設定
 
 ### 2.1 Cargo.toml (Workspace設定)
+
 ```toml
 [workspace]
 members = [
@@ -77,7 +78,9 @@ toml = "0.8"
 reqwest = { version = "0.11", features = ["json"] }
 
 # データベース（複数DB対応）
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "postgres"] }
+sqlx = { version = "0.7", features = [
+    "runtime-tokio-rustls", "sqlite", "postgres"
+] }
 sea-orm = { version = "0.12", optional = true }
 
 # エラーハンドリング
@@ -101,7 +104,8 @@ uuid = { version = "1.0", features = ["v4"] }
 ## 3. Cratesの詳細構造
 
 ### 3.1 Core Service
-```
+
+```text
 crates/core/
 ├── Cargo.toml
 ├── src/
@@ -122,6 +126,7 @@ crates/core/
 ```
 
 **Cargo.toml**:
+
 ```toml
 [package]
 name = "ai-manager-core"
@@ -142,7 +147,8 @@ config = { workspace = true }
 ```
 
 ### 3.2 LLM Service
-```
+
+```text
 crates/llm-service/
 ├── Cargo.toml
 ├── src/
@@ -159,7 +165,8 @@ crates/llm-service/
 ```
 
 ### 3.3 Data Service
-```
+
+```text
 crates/data-service/
 ├── Cargo.toml
 ├── src/
@@ -197,7 +204,8 @@ crates/data-service/
 ```
 
 ### 3.4 External Service
-```
+
+```text
 crates/external-service/
 ├── Cargo.toml
 ├── src/
@@ -224,7 +232,8 @@ crates/external-service/
 ```
 
 ### 3.5 Shared
-```
+
+```text
 crates/shared/
 ├── Cargo.toml
 ├── src/
@@ -241,7 +250,8 @@ crates/shared/
 ## 4. UI層構造
 
 ### 4.1 Tauri Backend
-```
+
+```text
 ui/src-tauri/
 ├── Cargo.toml
 ├── src/
@@ -255,7 +265,8 @@ ui/src-tauri/
 ```
 
 ### 4.2 React Frontend
-```
+
+```text
 ui/src/
 ├── App.tsx                 # メインアプリ
 ├── components/             # Reactコンポーネント
@@ -287,7 +298,8 @@ ui/src/
 ## 5. 設定・ドキュメント構造
 
 ### 5.1 設定ファイル
-```
+
+```text
 config/
 ├── default.toml            # デフォルト設定
 ├── development.toml        # 開発環境設定
@@ -295,7 +307,8 @@ config/
 ```
 
 ### 5.2 スクリプト
-```
+
+```text
 scripts/
 ├── setup.sh                # 初期セットアップ
 ├── build.sh                # ビルドスクリプト
@@ -307,6 +320,7 @@ scripts/
 ## 6. 開発ワークフロー
 
 ### 6.1 開発コマンド
+
 ```bash
 # 開発環境セットアップ
 ./scripts/setup.sh
@@ -322,6 +336,7 @@ scripts/
 ```
 
 ### 6.2 依存関係管理
+
 - Workspace依存関係で統一バージョン管理
 - 各crateは最小限の依存関係を持つ
 - 循環依存の回避（shared crateで共通型を管理）

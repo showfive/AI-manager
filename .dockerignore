@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Development files
+.env
+.env.*
+*.log
+
+# Target directory (built in container)
+target/
+Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+tests/
+coverage/
+
+# CI/CD
+.github/
+.pre-commit-config.yaml
+
+# Local development
+scripts/dev.sh
+scripts/setup.sh
+
+# Credentials and sensitive data
+credentials/
+*.key
+*.pem
+*.p12
+
+# Temporary files
+tmp/
+temp/
+
+# Node modules (if any)
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# Rust
+**/*.rs.bk
+
+# Local data
+data/
+logs/
