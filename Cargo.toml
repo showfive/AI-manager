@@ -5,6 +5,7 @@ members = [
     "crates/data-service",
     "crates/external-service",
     "crates/shared",
+    "ui/src-tauri",
 ]
 
 resolver = "2"
